@@ -1,4 +1,4 @@
-package stethoscope
+package net
 
 import (
 	"sync"
