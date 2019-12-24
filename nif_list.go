@@ -41,33 +41,26 @@ func (n *NifList) FindIf(name string) (pcap.Interface, error) {
 	return pif, err
 }
 
-func (n *NifList) New() {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
-	n.mp = make(map[string]pcap.Interface)
-}
-
-func (n *NifList) Refresh() (error) {
-	var err error
-	if n.mp == nil {
-		return syscall.ENOMEM
-	}
-
-	var ifs []pcap.Interface
-	if ifs, err = pcap.FindAllDevs(); err == nil {
-		n.mtx.Lock()
-		defer n.mtx.Unlock()
-		for _, pif := range ifs {
-			n.mp[pif.Name] = pif
-		}
-
-	}
-
-	return err
-}
-
 func (n *NifList) Len() int {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
 	return len(n.mp)
+}
+
+func (n *NifList) Refresh() (error) {
+	ifs, err := pcap.FindAllDevs()
+	if err == nil {
+		n.mtx.Lock()
+		defer n.mtx.Unlock()
+
+		if n.mp == nil {
+			n.mp = make(map[string]pcap.Interface)
+		}
+
+		for _, pif := range ifs {
+			n.mp[pif.Name] = pif
+		}
+	}
+
+	return err
 }
