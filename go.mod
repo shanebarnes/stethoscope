@@ -1,4 +1,4 @@
-module stethoscope
+module github.com/shanebarnes/stethoscope
 
 go 1.13
 
