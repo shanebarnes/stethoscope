@@ -10,10 +10,108 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNif_diff_Create(t *testing.T) {
+	mapA := make(map[string]net.Interface)
+	nextPtr := &mapA
+	mapB := make(map[string]net.Interface)
+	prevPtr := &mapB
+
+	var allEvents, createEvents int
+	err := diff(&prevPtr, &nextPtr, func(name string, ev WatchEvent, err error) error {
+		allEvents++
+
+		switch ev {
+		case EventCreate:
+			createEvents++
+		}
+
+		return nil
+	})
+
+	assert.Nil(t, err)
+	assert.Greater(t, allEvents, 0)
+	assert.Equal(t, allEvents, createEvents)
+}
+
+func TestNif_diff_Delete(t *testing.T) {
+	mapA := make(map[string]net.Interface)
+	nextPtr := &mapA
+	mapB := make(map[string]net.Interface)
+	prevPtr := &mapB
+
+	diff(&prevPtr, &nextPtr, func(name string, ev WatchEvent, err error) error {
+		return nil
+	})
+
+	// Simulate deletion by adding a dummy interface
+	dummy := "dummyif4321"
+	(*prevPtr)[dummy] = net.Interface{}
+
+	var allEvents, deleteEvents int
+	var eventName string
+	err := diff(&prevPtr, &nextPtr, func(name string, ev WatchEvent, err error) error {
+		allEvents++
+
+		switch ev {
+		case EventDelete:
+			eventName = name
+			deleteEvents++
+		}
+
+		return nil
+	})
+
+	assert.Nil(t, err)
+	assert.Equal(t, allEvents, 1)
+	assert.Equal(t, allEvents, deleteEvents)
+	assert.Equal(t, dummy, eventName)
+}
+
+func TestNif_diff_Modify(t *testing.T) {
+	mapA := make(map[string]net.Interface)
+	nextPtr := &mapA
+	mapB := make(map[string]net.Interface)
+	prevPtr := &mapB
+
+	diff(&prevPtr, &nextPtr, func(name string, ev WatchEvent, err error) error {
+		return nil
+	})
+
+	var dummy string
+	for key := range (*prevPtr) {
+		dummy = key
+		break
+	}
+
+	// Simulate modification by changing details of an existing interface
+	nif := (*prevPtr)[dummy]
+	nif.MTU = nif.MTU - 1
+	(*prevPtr)[dummy] = nif
+
+	var allEvents, modifyEvents int
+	var eventName string
+	err := diff(&prevPtr, &nextPtr, func(name string, ev WatchEvent, err error) error {
+		allEvents++
+
+		switch ev {
+		case EventModify:
+			eventName = name
+			modifyEvents++
+		}
+
+		return nil
+	})
+
+	assert.Nil(t, err)
+	assert.Equal(t, allEvents, 1)
+	assert.Equal(t, allEvents, modifyEvents)
+	assert.Equal(t, dummy, eventName)
+}
+
 func TestNif_Walk_CallbackError(t *testing.T) {
 	var cbCount int = 0
 
-	err := Walk(func(n net.Interface, err error) error {
+	err := Walk(func(nif net.Interface, err error) error {
 		cbCount++
 		return syscall.EINTR
 	})
@@ -25,7 +123,7 @@ func TestNif_Walk_CallbackError(t *testing.T) {
 func TestNif_Walk_Complete(t *testing.T) {
 	var cbCount int = 0
 
-	err := Walk(func(n net.Interface, err error) error {
+	err := Walk(func(nif net.Interface, err error) error {
 		cbCount++
 		return nil
 	})

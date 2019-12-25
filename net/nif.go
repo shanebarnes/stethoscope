@@ -26,6 +26,44 @@ var eventText = map[WatchEvent]string{
 	EventDelete: "Delete",
 }
 
+func diff(prevPtr, nextPtr **map[string]net.Interface, fn WatchFunc) error {
+	err := Walk(func(nif net.Interface, err error) error {
+		ev := EventNull
+		(**nextPtr)[nif.Name] = nif
+
+		if _, ok := (**prevPtr)[nif.Name]; ok { // Detect modify event
+			if !reflect.DeepEqual((**prevPtr)[nif.Name], nif) {
+				ev = EventModify
+			}
+			delete(**prevPtr, nif.Name)
+		} else { // Detect create event
+			ev = EventCreate
+		}
+
+		if ev == EventNull {
+			return nil
+		} else {
+			return fn(nif.Name, ev, err)
+		}
+	})
+
+	// Detect delete event(s)
+	if len(**prevPtr) > 0 && err == nil {
+		for key := range **prevPtr {
+			delete(**prevPtr, key)
+			if err = fn(key, EventDelete, nil); err != nil {
+				break
+			}
+		}
+	}
+
+	tmpPtr := *nextPtr
+	*nextPtr = *prevPtr
+	*prevPtr = tmpPtr
+
+	return err
+}
+
 func WatchEventString(ev WatchEvent) string {
 	str, ok := eventText[ev]
 	if !ok {
@@ -60,12 +98,21 @@ func Watch(ctx context.Context, tick time.Duration, fn WatchFunc) error {
 		err = syscall.EINVAL
 	} else {
 		ticker := time.NewTicker(tick)
+		defer ticker.Stop()
 
 		// Use two maps to poll for A/B diffs
-		nextMap := make(map[string]net.Interface)
-		nextPtr := &nextMap
-		prevMap := make(map[string]net.Interface)
-		prevPtr := &prevMap
+		mapA := make(map[string]net.Interface)
+		nextPtr := &mapA
+		mapB := make(map[string]net.Interface)
+		prevPtr := &mapB
+
+		// Force first tick without waiting for tick interval
+		select {
+		case <-ctx.Done():
+			err = syscall.ECANCELED
+		default:
+			err = diff(&prevPtr, &nextPtr, fn)
+		}
 
 		// Poll loop
 		for err == nil {
@@ -73,39 +120,7 @@ func Watch(ctx context.Context, tick time.Duration, fn WatchFunc) error {
 			case <-ctx.Done():
 				err = syscall.ECANCELED // alternatively: ctx.Err()
 			case <-ticker.C:
-				err = Walk(func(nif net.Interface, err error) error {
-					ev := EventNull
-					(*nextPtr)[nif.Name] = nif
-
-					if _, ok := (*prevPtr)[nif.Name]; ok { // Detect modify event
-						if !reflect.DeepEqual((*prevPtr)[nif.Name], nif) {
-							ev = EventModify
-						}
-						delete(*prevPtr, nif.Name)
-					} else { // Detect create event
-						ev = EventCreate
-					}
-
-					if ev == EventNull {
-						return nil
-					} else {
-						return fn(nif.Name, ev, err)
-					}
-				})
-
-				// Detect delete event(s)
-				if len(*prevPtr) > 0 && err == nil {
-					for key := range *prevPtr {
-						delete(*prevPtr, key)
-						if err = fn(key, EventDelete, nil); err != nil {
-							break
-						}
-					}
-				}
-
-				tmpPtr := nextPtr
-				nextPtr = prevPtr
-				prevPtr = tmpPtr
+				err = diff(&prevPtr, &nextPtr, fn)
 			}
 		}
 	}
