@@ -26,7 +26,7 @@ var eventText = map[WatchEvent]string{
 	EventDelete: "Delete",
 }
 
-func diff(prevPtr, nextPtr **map[string]net.Interface, fn WatchFunc) error {
+func diff(prevPtr, nextPtr **map[string]net.Interface, fn WatchFunc, list ...string) error {
 	err := Walk(func(nif net.Interface, err error) error {
 		ev := EventNull
 		(**nextPtr)[nif.Name] = nif
@@ -45,7 +45,7 @@ func diff(prevPtr, nextPtr **map[string]net.Interface, fn WatchFunc) error {
 		} else {
 			return fn(nif.Name, ev, err)
 		}
-	})
+	}, list...)
 
 	// Detect delete event(s)
 	if len(**prevPtr) > 0 && err == nil {
@@ -64,19 +64,22 @@ func diff(prevPtr, nextPtr **map[string]net.Interface, fn WatchFunc) error {
 	return err
 }
 
-func WatchEventString(ev WatchEvent) string {
-	str, ok := eventText[ev]
-	if !ok {
-		str = "Invalid"
-	}
-	return str
-}
-
-func Walk(fn WalkFunc) error {
+func Walk(fn WalkFunc, list ...string) error {
 	var err error
 
 	if fn == nil {
 		err = syscall.EINVAL
+	} else if len(list) > 0 {
+		for _, name := range list {
+			var nif *net.Interface
+			if nif, err = net.InterfaceByName(name); err == nil {
+				err = fn(*nif, nil)
+			}
+
+			if err != nil {
+				break
+			}
+		}
 	} else {
 		var ifs []net.Interface
 		if ifs, err = net.Interfaces(); err == nil {
@@ -91,7 +94,7 @@ func Walk(fn WalkFunc) error {
 	return err
 }
 
-func Watch(ctx context.Context, tick time.Duration, fn WatchFunc) error {
+func Watch(ctx context.Context, tick time.Duration, fn WatchFunc, list ...string) error {
 	var err error
 
 	if ctx == nil || tick <= 0 * time.Second || fn == nil {
@@ -111,7 +114,7 @@ func Watch(ctx context.Context, tick time.Duration, fn WatchFunc) error {
 		case <-ctx.Done():
 			err = syscall.ECANCELED
 		default:
-			err = diff(&prevPtr, &nextPtr, fn)
+			err = diff(&prevPtr, &nextPtr, fn, list...)
 		}
 
 		// Poll loop
@@ -120,10 +123,18 @@ func Watch(ctx context.Context, tick time.Duration, fn WatchFunc) error {
 			case <-ctx.Done():
 				err = syscall.ECANCELED // alternatively: ctx.Err()
 			case <-ticker.C:
-				err = diff(&prevPtr, &nextPtr, fn)
+				err = diff(&prevPtr, &nextPtr, fn, list...)
 			}
 		}
 	}
 
 	return err
+}
+
+func WatchEventString(ev WatchEvent) string {
+	str, ok := eventText[ev]
+	if !ok {
+		str = "Invalid"
+	}
+	return str
 }
