@@ -1,7 +1,7 @@
 package diagnostic
 
 import (
-	"fmt"
+	//"fmt"
 	"syscall"
 	"sync"
 	"time"
@@ -18,15 +18,15 @@ type FlowInfo struct {
 	HdrBytes uint64         `json:"-"`
 	PayBytes uint64         `json:"-"`
 	FlowHash uint64         `json:"-"`
-	context layerContext    `json:"-"`
-	first time.Time         `json:"-"`
-	last time.Time          `json:"-"`
-	window map[uint32]uint32 `json:"-"`
+	context layerContext
+	first time.Time
+	last time.Time
+	window map[uint32]uint32
 	WinSize uint32           `json:"winSize"`
-	mws uint32               `json:"-"` // max window size
-	winHead uint32           `json:"-"`
-	winTail uint32           `json:"-"`
-	lastSeq uint32           `json:"-"`
+	mws uint32                // max window size
+	winHead uint32
+	winTail uint32
+	lastSeq uint32
 	DupPackets uint64        `json:"-"`
 	Packets uint64           `json:"packets"`
 	Bps     uint64           `json:"-"`
@@ -166,30 +166,30 @@ func (t *TraceTable) addToWindow(f *FlowInfo, /*window *map[uint32]uint32,*/ seq
 			//fmt.Println("+win: ", f.WinSize)
 		}
 	}
-	return 0
+	return ret
 
 
 	// Zero window updates?
-	if size > 0 {
-		if val, ok := f.window[seq]; ok {
-			if val != size {
-				// Update
-				fmt.Println("Seq len changed from", val, "to", size)
-			}
+	//if size > 0 {
+	//	if val, ok := f.window[seq]; ok {
+	//		if val != size {
+	//			// Update
+	//			fmt.Println("Seq len changed from", val, "to", size)
+	//		}
 
-			if size > 0 {
-				//fmt.Println("seq ", seq, " size ", size, " is a DUP!!!")
-				f.DupPackets++
-				f.DupBytes += uint64(size)
-			}
-		} else {
-			//fmt.Println("seq ", seq, " size ", size, " is ADDED!!!")
-			f.window[seq] = size
-			ret = size
-		}
-	}
+	//		if size > 0 {
+	//			//fmt.Println("seq ", seq, " size ", size, " is a DUP!!!")
+	//			f.DupPackets++
+	//			f.DupBytes += uint64(size)
+	//		}
+	//	} else {
+	//		//fmt.Println("seq ", seq, " size ", size, " is ADDED!!!")
+	//		f.window[seq] = size
+	//		ret = size
+	//	}
+	//}
 
-	return ret
+	//return ret
 }
 
 // taken from net/tcp.h
@@ -221,16 +221,16 @@ func (t *TraceTable) delFrWindow(f *FlowInfo,/*window *map[uint32]uint32,*/ ack 
 			//fmt.Println("-win: ", f.WinSize)
 		}
 	}
-	return 0
-
-	for seq, size := range f.window {
-		if seq <= ack {
-			ret += size
-			delete(f.window, seq)
-		}
-	}
-
 	return ret
+
+	//for seq, size := range f.window {
+	//	if seq <= ack {
+	//		ret += size
+	//		delete(f.window, seq)
+	//	}
+	//}
+
+	//return ret
 }
 
 // This layer could be defined as an interface that can be swapped by anyone's own definition

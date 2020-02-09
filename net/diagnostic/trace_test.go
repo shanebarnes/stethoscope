@@ -7,31 +7,34 @@ import (
 )
 
 func TestTrace_InitTable(t *testing.T) {
-	table := traceTable{}
+	table := TraceTable{}
 	assert.Zero(t, len(table.tbl))
 }
 
 func TestTrace_UpdateTableX1(t *testing.T) {
-	table := traceTable{}
+	table := TraceTable{}
 	ctx := Context{}
-	ctx.l4.hash = uint64(1234)
+	ctx.srcSum = uint64(1234)
+	ctx.dstSum = uint64(4321)
 
-	table.updateTable(&ctx.l4)
+	table.updateTable(&ctx)
 	assert.Equal(t, 1, len(table.tbl))
 
-	table.updateTable(&ctx.l4)
+	table.updateTable(&ctx)
 	assert.Equal(t, 1, len(table.tbl))
 }
 
 func TestTrace_UpdateTableX2(t *testing.T) {
-	table := traceTable{}
+	table := TraceTable{}
 	ctx := Context{}
-	ctx.l4.hash = uint64(1234)
+	ctx.srcSum = uint64(1234)
+	ctx.dstSum = uint64(4321)
 
-	table.updateTable(&ctx.l4)
+	table.updateTable(&ctx)
 	assert.Equal(t, 1, len(table.tbl))
 
-	ctx.l4.hash = uint64(4321)
-	table.updateTable(&ctx.l4)
+	ctx.srcSum = uint64(5678)
+	ctx.dstSum = uint64(4321)
+	table.updateTable(&ctx)
 	assert.Equal(t, 2, len(table.tbl))
 }
