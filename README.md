@@ -5,9 +5,9 @@ Listen to your network
 ## Usage
 
 ```
-./stethoscope help
+./steth help
 NAME:
-   stethoscope - listen to your network
+   steth - listen to your network
 
 USAGE:
    main [global options] command [command options] [arguments...]
@@ -23,12 +23,12 @@ GLOBAL OPTIONS:
 ```
 
 ```
-./stethoscope net help
+./steth net help
 NAME:
-   stethoscope net - options for network operations
+   steth net - options for network operations
 
 USAGE:
-   stethoscope net [global options] command [command options] [arguments...]
+   steth net [global options] command [command options] [arguments...]
 
 COMMANDS:
    list     print network interface list
@@ -40,21 +40,21 @@ GLOBAL OPTIONS:
 ```
 
 ```
-./stethoscope net help list
+./steth net help list
 NAME:
-   stethoscope net list - print network interface list
+   steth net list - print network interface list
 
 USAGE:
-   stethoscope net list [arguments...]
+   steth net list [arguments...]
 ```
 
 ```
-./stethoscope net help stat
+./steth net help stat
 NAME:
-   stethoscope net stat - print network interface statistics
+   steth net stat - print network interface statistics
 
 USAGE:
-   stethoscope net stat [command options] [arguments...]
+   steth net stat [command options] [arguments...]
 
 OPTIONS:
    --filter value, -f value     capture filter
@@ -65,14 +65,14 @@ OPTIONS:
 
 ```
 # List all network interfaces
-./stethoscope net list
+./steth net list
 
 # List local loopback network interface
-./stethoscope net list lo
+./steth net list lo
 
 # Stat TCP connections on Loopback
-./stethoscope net stat -i eth0 -f "tcp port 80" -f "tcp port 443"
+./steth net stat -i eth0 -f "tcp port 80" -f "tcp port 443"
 
 # Stat TCP connections to google.com
-./stethoscope net stat -i eth0 -f "host google.com"
+./steth net stat -i eth0 -f "host google.com"
 ```

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	appName = "stethoscope"
+	appName = "steth"
 )
 
 func printNif(nif net.Interface) error {
